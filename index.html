@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="グネグネ言うことを聞かない体の頭を指で引っぱり、記者が求める角度でお辞儀を決め続ける。失敗するまで終わらない謝罪会見ゲーム。">
+<meta property="og:title" content="大変申し訳ございませんでした。">
+<meta property="og:description" content="グネグネの体で、記者が求める角度のお辞儀を決め続ける謝罪会見ゲーム。何回謝れるか。">
+<meta property="og:url" content="https://tamago-boro-156.github.io/owabi/">
+<meta property="og:image" content="https://tamago-boro-156.github.io/owabi/docs/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://tamago-boro-156.github.io/owabi/docs/ogp.png">
+<meta name="twitter:title" content="大変申し訳ございませんでした。">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>大変申し訳ございませんでした。</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Shippori+Mincho:wght@800&display=swap">
+<style>
+/* Layout: full-screen canvas of a press-conference room (gold folding screen, white-clothed table, mics), side view of a wobbly
+   man in a suit. Two hold buttons at the bottom for touch. Panels centred. Single committed look. */
+:root {
+  --ink: #1f1d24;
+  --panel: rgba(31,29,36,.92);
+  --paper: #fbf8f1;
+  --gold: #d8b24a;
+  --flash: #fffbe0;
+  --red: #d8402e;
+  --ok: #4fbf7a;
+  --pixel: "DotGothic16", "Zen Kaku Gothic New", monospace;
+  --ui: "Zen Kaku Gothic New", "Hiragino Sans", system-ui, sans-serif;
+  --news: "Shippori Mincho", "Hiragino Mincho ProN", serif;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: #3a3640; color: var(--paper); font-family: var(--ui); overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; }
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.hud { position: fixed; top: env(safe-area-inset-top, 0px); left: 50%; transform: translateX(-50%); width: min(100%, 60vh); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
+.chip { background: var(--panel); border: 2px solid #000; padding: 6px 12px; font-family: var(--pixel); }
+.chip .k { display: block; font-size: 12px; color: var(--gold); letter-spacing: .1em; }
+.chip .v { font-size: 22px; font-variant-numeric: tabular-nums; }
+.pads { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; gap: 12px;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
+.pad { pointer-events: auto; touch-action: none; min-width: 120px; padding: 12px 18px; background: var(--paper); color: var(--ink); border: 3px solid #000; box-shadow: 0 5px 0 #000;
+  font-family: var(--pixel); font-size: 18px; text-align: center; cursor: pointer; }
+.pad small { display: block; font-size: 12px; color: #6b6772; }
+@media (max-aspect-ratio: 10/11) {
+  .pads { gap: 10px; }
+  .pad { flex: 1; min-width: 0; height: 104px; font-size: 30px; display: grid; place-content: center; gap: 4px; }
+  .pad small { font-size: 12px; }
+}
+.pad.on { transform: translateY(3px); box-shadow: 0 2px 0 #000; background: var(--gold); }
+.overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(20,18,24,.55); overflow-y: auto;
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); }
+.panel { background: var(--paper); color: var(--ink); border: 3px solid #000; box-shadow: 8px 8px 0 #000; max-width: 520px; width: 100%; padding: 22px; display: grid; gap: 12px; }
+.panel h1 { margin: 0; font-family: var(--news); font-size: clamp(24px, 7.4vw, 36px); letter-spacing: .06em; line-height: 1.2; }
+.panel h1 .nowrap { white-space: nowrap; }
+.panel p, .panel li { margin: 0; font-size: 14px; line-height: 1.7; }
+.panel ol { margin: 0; padding-left: 1.3em; }
+.btn { justify-self: start; font-family: var(--pixel); font-size: 20px; letter-spacing: .1em; background: var(--red); color: #fff; border: 3px solid #000; box-shadow: 0 5px 0 #000; padding: 8px 22px; cursor: pointer; }
+.btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #000; }
+.share { display: flex; gap: 10px; flex-wrap: wrap; }
+.xbtn { background: #111; text-decoration: none; display: inline-block; }
+.btn.ghost { background: #fff; color: var(--ink); }
+#shareText { width: 100%; min-height: 96px; font-size: 13px; font-family: var(--ui); }
+.btn:focus-visible, .pad:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); padding: 0 5px; background: #fff; }
+.sub { font-size: 12px; color: #6b6772; }
+/* the morning paper */
+.paper { background: #f4efe2; color: #1a1814; border: 1px solid #b9b09a; padding: 14px 16px; display: grid; gap: 8px; }
+.paper .mast { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 3px double #1a1814; padding-bottom: 4px; font-family: var(--news); }
+.paper .mast b { font-size: 20px; letter-spacing: .2em; }
+.paper .mast span { font-size: 11px; }
+.paper h2 { margin: 0; font-family: var(--news); font-size: clamp(22px, 6vw, 30px); line-height: 1.25; letter-spacing: .02em; white-space: pre-line; }
+.paper .lead { font-size: 13px; line-height: 1.7; }
+.rows { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.rows .g { font-family: var(--pixel); }
+.total { font-family: var(--pixel); font-size: 18px; }
+</style>
+
+</head>
+<body>
+<canvas id="game" aria-label="大変申し訳ございませんでした。の謝罪会見会場"></canvas>
+
+<div class="hud">
+  <div class="chip"><span class="k">誠意</span><span class="v" id="score">0</span></div>
+  <div class="chip"><span class="k">謝った回数</span><span class="v" id="qno">0</span></div>
+</div>
+<div class="overlay" id="intro">
+  <div class="panel">
+    <h1>大変申し訳<br><span class="nowrap">ございませんでした。</span></h1>
+    <p>謝罪会見。記者たちは、あなたのお辞儀の角度を見ています。ところが今日の体は、なぜかグネグネしていて言うことを聞きません。</p>
+    <ol>
+      <li>画面を<b>指でつかんで引っぱる</b>と、頭がその方向へグネっと引き寄せられます。</li>
+      <li>指を前に倒すほど深く頭が下がり、指を体に近づけるほど顔が伏せます。離すとゆっくり起き上がります。</li>
+      <li>求められた角度で、顔を伏せ、ぐらつかずに止まると誠意がたまります。</li>
+      <li>深すぎると机に頭をぶつけます。マイクも倒れます。</li>
+    </ol>
+    <p class="sub">記者の注文は終わりません。求められた角度で止まれなかったら、そこで会見は打ち切りです。何回謝れるか。</p>
+    <button class="btn" id="startBtn">会見をはじめる</button>
+  </div>
+</div>
+
+<div class="overlay" id="result" hidden>
+  <div class="panel">
+    <div class="paper">
+      <div class="mast"><b>朝刊</b><span id="date"></span></div>
+      <h2 id="headline">見出し</h2>
+      <p class="lead" id="lead"></p>
+      <div class="rows" id="rows"></div>
+      <div class="total" id="total"></div>
+    </div>
+    <div class="share">
+      <a class="btn xbtn" id="xShare" href="https://x.com/intent/post" target="_blank" rel="noopener">𝕏 でポスト</a>
+      <button class="btn ghost" id="copyBtn" type="button">結果をコピー</button>
+      <button class="btn" id="againBtn">もう一度、謝る</button>
+    </div>
+    <textarea id="shareText" readonly aria-label="ポストする文" hidden></textarea>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('game'), ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const PX = '"DotGothic16", "Zen Kaku Gothic New", monospace';
+  const UI = '"Zen Kaku Gothic New", "Hiragino Sans", sans-serif';
+  const D2R = Math.PI / 180;
+
+  // virtual stage 1000 x 700
+  let W = 0, H = 0, DPR = 1, K = 1, OX = 0, OY = 0, PORTRAIT = false, VIEW = { x: 0, y: 0, w: 1000, h: 700 };
+  let CW = 0, CX = 0;   // the phone-shaped column the game is drawn in
+  function resize() {
+    DPR = Math.min(devicePixelRatio || 1, 2); W = cv.clientWidth; H = cv.clientHeight;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    PORTRAIT = true;
+    CW = Math.min(W, H * 0.6); CX = (W - CW) / 2;
+    VIEW = { x: 212, y: -60, w: 530, h: 770 };
+    const top = 64, bottom = 24;
+    K = Math.min(CW / VIEW.w, (H - top - bottom) / VIEW.h);
+    OX = CX + (CW - VIEW.w * K) / 2 - VIEW.x * K;
+    OY = top - VIEW.y * K;
+  }
+  addEventListener('resize', resize); resize();
+
+  const HIP = { x: 330, y: 440 }, TORSO = 165, NECK = 22, HEAD_R = 34, TABLE_Y = 512, TABLE_X0 = 395, TABLE_X1 = 760;
+  // the press keeps asking; it never ends until you fail one
+  const NAMES = { 15: '会釈', 30: '敬礼', 45: '最敬礼', 90: '九十度' };
+  const ANGLES = [15, 20, 30, 40, 45, 55, 65, 75, 90];
+  function makeQ(n) {
+    if (n === 0) return { angle: 15, name: '会釈', ask: 'まずは軽く、会釈を。' };
+    const pool = ANGLES.filter(a => a <= 45 + n * 8);
+    const angle = pool[Math.floor(Math.random() * pool.length)];
+    const name = NAMES[angle] || angle + '度';
+    const ask = pick([
+      name + 'でお願いします。', '今度は' + angle + '度で。', 'もう一度、' + name + 'で。', '誠意を見せてください。' + name + 'で。',
+      '反省が足りない！ ' + name + '！', 'カメラが間に合いませんでした。もう一回、' + name + 'で。', '別の社の者です。' + name + 'でお願いします。',
+      '後ろの席まで見えるように、' + name + 'で。', '生中継です。' + angle + '度で、どうぞ。', '先ほどのは練習ですよね？ 本番の' + name + 'を。',
+      '週刊誌の者です。' + angle + '度の写真がほしいんですが。', '読者が納得しません。' + name + 'で。', '確認ですが、それが' + name + 'ですか？ もう一度。',
+      '海外メディアです。オジギ、' + angle + 'ド、プリーズ。', 'いまの角度、メモし損ねました。' + name + 'でもう一回。', '社長、' + angle + '度です。' + angle + '度。',
+      'ネットでは「浅い」と言われてますよ。' + name + 'で。', '夕方のニュースに使います。' + name + 'でお願いします。'
+    ]);
+    return { angle, name, ask };
+  }
+  // each apology gets a little harder: narrower band, less time, a wobblier body
+  const level = n => ({ tol: Math.max(4, 15 - n * 0.6), time: Math.max(7, 16 - n * 0.7), need: Math.min(2.8, 2.0 + n * 0.05), wob: 1 + n * 0.07 });
+  let best = 0; try { best = +localStorage.getItem('owabi-best') || 0; } catch (e) {}
+
+  const st = {
+    phase: 'intro', t: 0, q: 0, qt: 0, prog: 0, score: 0, results: [],
+    th: 0, thv: 0, ph: 0, phv: 0, armA: 0, armV: 0, armB: 0, armBV: 0,
+    hip: false, neck: false, bonks: 0, qBonks: 0, wobble: 0,
+    mics: [0, 0, 0, 0], micV: [0, 0, 0, 0], flashes: [], texts: [], say: null, sayT: 0, sweat: [],
+    lastShoulder: null, lastSV: { x: 0, y: 0 }, shake: 0
+  };
+
+  // ---------- audio ----------
+  let ac = null;
+  const audio = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; };
+  function noise(dur, freq, vol, type) {
+    if (!audio()) return; const t = ac.currentTime, b = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const n = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); n.buffer = b; f.type = type || 'bandpass'; f.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); n.connect(f).connect(g).connect(ac.destination); n.start(t);
+  }
+  function tone(f0, f1, dur, vol, type) {
+    if (!audio()) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sine';
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  const sfx = {
+    shutter: () => { noise(0.04, 3000, 0.25, 'highpass'); setTimeout(() => noise(0.05, 2000, 0.18, 'highpass'), 60); },
+    bonk: () => { tone(160, 60, 0.35, 0.5, 'triangle'); noise(0.15, 300, 0.5); },
+    clatter: () => { noise(0.25, 1800, 0.25); },
+    ok: () => { tone(660, 990, 0.18, 0.15); setTimeout(() => tone(990, 1320, 0.25, 0.15), 120); },
+    fail: () => tone(300, 120, 0.5, 0.15, 'square')
+  };
+
+  // ---------- flow ----------
+  function startGame() {
+    Object.assign(st, { tgt: 0, phase: 'play', q: 0, cur: makeQ(0), lv: level(0), qt: 0, prog: 0, score: 0, results: [], th: 0, thv: 0, ph: 0, phv: 0, armA: 0, armV: 0, armB: 0, armBV: 0,
+      bonks: 0, qBonks: 0, wobble: 0, mics: [0, 0, 0, 0], micV: [0, 0, 0, 0], flashes: [], texts: [], say: null, sweat: [] });
+    $('intro').hidden = true; $('result').hidden = true; askQ(); hud();
+  }
+  function askQ() {
+    st.qt = 0; st.prog = 0; st.qBonks = 0; st.wobble = 0;
+    st.cur = makeQ(st.q); st.lv = level(st.q);
+    reporter('「' + st.cur.ask + '」');
+  }
+  function reporter(txt) { st.say = txt; st.sayT = 0; }
+  function floatText(txt, x, y, color, size) { st.texts.push({ txt, x, y, t: 0, color: color || '#ffffff', size: size || 30 }); }
+  function hud() { $('score').textContent = Math.round(st.score); $('qno').textContent = st.q; }
+  function endQ(ok) {
+    const Q = st.cur;
+    let pts = 0, grade = '×';
+    if (ok) {
+      pts = Math.max(20, Math.round(100 - st.qt * 3 - st.qBonks * 20 - st.wobble * 6));
+      grade = pts >= 85 ? '◎' : pts >= 60 ? '○' : '△';
+      sfx.ok(); floatText(grade === '◎' ? pick(['誠意、伝わりました', '……お見事です', 'いい角度でした']) : pick(['……まあ、いいでしょう', 'ギリギリですね', '次はちゃんとお願いします']), 640, 210, '#ffe9a3', 28);
+    } else { sfx.fail(); floatText('時間切れ', 640, 210, '#ff9a8a', 30); }
+    st.score += pts; st.results.push({ Q, pts, grade, bonks: st.qBonks });
+    if (ok) st.q++;
+    hud();
+    if (!ok) { st.phase = 'done'; reporter('「もう結構です。会見は打ち切ります」'); setTimeout(showResult, 1800); }
+    else { st.phase = 'between'; st.betweenT = 0; }
+  }
+  function showResult() {
+    st.phase = 'result';
+    const total = Math.round(st.score), n = st.q, b = st.results.reduce((a, r) => a + r.bonks, 0);
+    const micsDown = st.mics.filter(m => Math.abs(m) > 1).length;
+    const isBest = total > best; if (isBest) { best = total; try { localStorage.setItem('owabi-best', best); } catch (e) {} }
+    let head;
+    if (n === 0) head = '謝罪会見\n開始直後に決裂';
+    else if (n < 3) head = n + '回の謝罪もむなしく\n会見打ち切り';
+    else if (n < 8) head = n + '回頭を下げるも\n記者団は納得せず';
+    else if (n < 15) head = n + '回連続の謝罪\n「もう十分」の声も';
+    else if (n < 20) head = '謝罪' + n + '回の新記録\n会場から拍手';
+    else head = '謝罪' + n + '回\n「謝り慣れすぎでは」と疑問の声';
+    let lead = '会見では' + n + '回にわたって頭を下げた。';
+    if (b) lead += '途中、机に頭を' + b + '回打ちつけ、';
+    if (micsDown) lead += '報道各社のマイク' + micsDown + '本をなぎ倒した。';
+    if (n >= 20) lead += 'あまりに滑らかな謝罪に、記者からは「謝罪に慣れすぎているのでは」「普段から何をしているのか」と別の疑惑が浮上している。';
+    lead += st.results.length && st.results[st.results.length - 1].grade === '×' ? '最後は求められた' + st.results[st.results.length - 1].Q.angle + '度で止まれず、会見は打ち切られた。' : '';
+    $('headline').textContent = head; $('lead').textContent = lead;
+    const d = new Date(); $('date').textContent = d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + (d.getDate() + 1) + '日';
+    $('rows').innerHTML = st.results.slice(-8).map(r => '<span>' + r.Q.name + '（' + r.Q.angle + '°）</span><span>' + (r.bonks ? '頭を打った ×' + r.bonks : '') + '</span><span class="g">' + r.grade + ' ' + r.pts + '</span>').join('');
+    $('total').textContent = '誠意スコア ' + total + (isBest ? '（ベスト更新）' : '　ベスト ' + best);
+    // text for X: the headline, the count and the score
+    const text = '【大変申し訳ございませんでした。】\n謝罪会見で' + n + '回頭を下げました。誠意スコア ' + total + '\n\n朝刊見出し「' + head.replace('\n', '　') + '」\n\n#大変申し訳ございませんでした #謝罪会見ゲーム';
+    $('shareText').value = text + '\n' + shareUrl();
+    $('xShare').href = 'https://x.com/intent/post?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(shareUrl());
+    $('result').hidden = false; $('againBtn').focus();
+  }
+
+  // ---------- input (finger) ----------
+  const toV = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
+  cv.addEventListener('pointerdown', e => { audio(); cv.setPointerCapture(e.pointerId); st.fingerId = e.pointerId; st.finger = toV(e.clientX, e.clientY); });
+  cv.addEventListener('pointermove', e => { if (st.fingerId === e.pointerId) st.finger = toV(e.clientX, e.clientY); });
+  ['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, e => { if (st.fingerId === e.pointerId) { st.finger = null; st.fingerId = null; } }));
+  $('startBtn').addEventListener('click', () => { audio(); startGame(); });
+  $('againBtn').addEventListener('click', startGame);
+  // the public address of the game: the page itself when it is hosted on its own site, otherwise this artifact
+  function shareUrl() { return /github\.io$/.test(location.hostname) ? location.origin + location.pathname : 'https://claude.ai/artifact/SdxQ2h5aNdcDH2RA67DSC7'; }
+  $('copyBtn').addEventListener('click', () => {
+    const t = $('shareText');
+    navigator.clipboard.writeText(t.value).then(() => { $('copyBtn').textContent = 'コピーしました'; setTimeout(() => $('copyBtn').textContent = '結果をコピー', 1800); })
+      .catch(() => { t.hidden = false; t.focus(); t.select(); $('copyBtn').textContent = '下の文を長押しでコピー'; });
+  });
+
+  // ---------- body geometry ----------
+  function bodyPts() {
+    const th = st.th * D2R, ph = st.ph * D2R;
+    const sh = { x: HIP.x + Math.sin(th) * TORSO, y: HIP.y - Math.cos(th) * TORSO };
+    const nk = { x: sh.x + Math.sin(th) * NECK, y: sh.y - Math.cos(th) * NECK };
+    const ha = th + ph;
+    const hd = { x: nk.x + Math.sin(ha) * HEAD_R, y: nk.y - Math.cos(ha) * HEAD_R };
+    return { th, ha, sh, nk, hd };
+  }
+
+  // ---------- update ----------
+  function update(dt) {
+    st.t += dt;
+    st.texts.forEach(t => { t.t += dt; t.y -= dt * 24; }); st.texts = st.texts.filter(t => t.t < 1.8);
+    st.flashes.forEach(f => f.t += dt); st.flashes = st.flashes.filter(f => f.t < 0.25);
+    st.sayT += dt; st.shake = Math.max(0, st.shake - dt * 3);
+
+    // wobbly body: a springy waist and a floppy neck
+    const thPrev = st.thv;
+    // holding bends the waist little by little; letting go lets it creep back. The body follows with a soft wobble.
+    // pulling with a finger: the waist bends toward the finger, the head turns toward it. Let go and it creeps back up.
+    const P0 = bodyPts();
+    let phTarget = -8;
+    if (st.finger) {
+      const f = st.finger;
+      st.tgt = Math.max(-4, Math.min(115, Math.atan2(f.x - HIP.x, HIP.y - f.y) / D2R));
+      // like pulling the head: the closer the finger is to the hips, the more the neck has to fold down
+      const reach = TORSO + NECK + HEAD_R, dist = Math.hypot(f.x - HIP.x, f.y - HIP.y);
+      phTarget = Math.max(-25, Math.min(80, (reach - dist) * 0.7));
+    } else {
+      st.tgt = Math.max(-4, Math.min(115, (st.tgt || 0) + (st.hip ? 42 : -14) * dt));
+      if (st.neck) phTarget = 62;
+    }
+    const wob = st.lv ? st.lv.wob : 1;
+    const tha = 16 * (st.tgt - st.th) - 2.0 * st.thv + (Math.sin(st.t * 7.3) * 18 + Math.sin(st.t * 2.1) * 10) * wob;
+    st.thv += tha * dt; st.th += st.thv * dt;
+    if (st.th < -12) { st.th = -12; st.thv *= -0.3; }
+    const pha = 42 * (phTarget - st.ph) - 4.2 * st.phv - tha * 0.55;
+    st.phv += pha * dt; st.ph += st.phv * dt; st.ph = Math.max(-40, Math.min(95, st.ph));
+
+    // head against the table
+    const P = bodyPts();
+    if (P.hd.x > TABLE_X0 - 10 && P.hd.y + HEAD_R * 0.8 > TABLE_Y) {
+      if (st.thv > 25 || st.phv > 60) {
+        st.bonks++; st.qBonks++; sfx.bonk(); st.shake = 1; floatText('ゴンッ！', P.hd.x + 30, P.hd.y - 40, '#ff6a50', 40);
+        if (st.phase === 'play') { reporter(pick(['「今の、わざとですか？」', '「大丈夫ですか！？」', '「机に謝ってどうするんですか」', '「いい音しましたね」', '「頭突きは謝罪じゃないです」', '「机が謝られてます」', '「救急車、呼びます？」'])); st.prog = Math.max(0, st.prog - 0.8); }
+        for (let i = 0; i < 4; i++) st.flashes.push({ x: (PORTRAIT ? 460 : 700) + Math.random() * 280, y: (PORTRAIT ? 580 : 520) + Math.random() * 120, t: -i * 0.06 });
+      }
+      st.thv = -Math.abs(st.thv) * 0.5 - 30; st.phv = -Math.abs(st.phv) * 0.4;
+    }
+    // knocking the microphones
+    const micX = [470, 505, 540, 575];
+    micX.forEach((mx, i) => {
+      const top = { x: mx, y: TABLE_Y - 78 };
+      if (Math.abs(st.mics[i]) < 1 && Math.hypot(P.hd.x - top.x, P.hd.y - top.y) < HEAD_R + 10) { st.micV[i] = 4 + Math.random() * 3; sfx.clatter(); floatText('ガシャ', mx, TABLE_Y - 110, '#ffffff', 22); }
+      if (st.micV[i]) { st.mics[i] += st.micV[i] * dt; if (st.mics[i] > 1.5) { st.mics[i] = 1.5; st.micV[i] = 0; } }
+    });
+    // arms dangle from the shoulder
+    if (st.lastShoulder) {
+      const vx = (P.sh.x - st.lastShoulder.x) / dt, vy = (P.sh.y - st.lastShoulder.y) / dt;
+      const ax = (vx - st.lastSV.x) / dt;
+      st.lastSV = { x: vx, y: vy };
+      const aa = -14 * Math.sin(st.armA) - 2.2 * st.armV - ax * 0.004 * Math.cos(st.armA);
+      st.armV += aa * dt; st.armA += st.armV * dt;
+      const ab = -18 * Math.sin(st.armB) - 2.6 * st.armBV - aa * 0.4;
+      st.armBV += ab * dt; st.armB += st.armBV * dt;
+    }
+    st.lastShoulder = { x: P.sh.x, y: P.sh.y };
+    // sweat while bowing deep
+    if (st.th > 40 && Math.random() < dt * 3) st.sweat.push({ x: P.hd.x - 10, y: P.hd.y - 20, vy: -60, t: 0 });
+    st.sweat.forEach(s => { s.t += dt; s.vy += 500 * dt; s.y += s.vy * dt; s.x -= 30 * dt; }); st.sweat = st.sweat.filter(s => s.t < 1);
+
+    if (st.phase === 'between') { st.betweenT += dt; if (st.betweenT > 2.0) { st.phase = 'play'; askQ(); } return; }
+    if (st.phase !== 'play') return;
+
+    // judging
+    st.qt += dt;
+    const Q = st.cur, L = st.lv, TOL = L.tol;
+    const off = st.th - Q.angle, still = Math.abs(st.thv) < 60, down = st.ph > 10;
+    const inBand = Math.abs(off) < TOL && down && still;
+    if (inBand) st.prog += dt; else st.prog = Math.max(0, st.prog - dt * 0.3);
+    if (!still) st.wobble += dt;
+    // the press reacts
+    if (!inBand && Math.random() < dt * 2.2) { st.flashes.push({ x: (PORTRAIT ? 440 : 680) + Math.random() * 300, y: (PORTRAIT ? 560 : 500) + Math.random() * 150, t: 0 }); sfx.shutter(); }
+    if (st.sayT > 2.2) {
+      if (Math.abs(st.thv) > 90) reporter(pick(['「グラグラしてますよ！」', '「ふざけてるんですか？」', '「落ち着いて！」', '「骨、ありますか？」', '「揺れで反省を表現してるんですか？」', '「酔ってます？」', '「こんにゃくみたいですよ」']));
+      else if (off < -TOL) reporter(pick(['「浅い！」', '「誠意が見えない！」', '「それは会釈ですか？」', '「首しか動いてませんよ」', '「もっと！」', '「まだ立ってますよね？」', '「それ、ただのうなずきでは」']));
+      else if (off > TOL) reporter(pick(['「深すぎて逆に怪しい」', '「そこまでは求めてません」', '「床に何か落ちてます？」', '「土下座の練習ですか？」', '「靴ひもでも結んでます？」', '「逆に誠意がない」']));
+      else if (!down) reporter(pick(['「顔を上げないで！」', '「目が合ってますよ」', '「なぜこっちを見る」', '「カメラ目線はやめてください」', '「笑ってませんか？」', '「その顔は反省の顔ですか？」']));
+      else reporter(pick(['「……」', '「（カシャ）」', '「……いいですね」', '「そのまま、そのまま」']));
+    }
+    if (st.prog >= L.need) endQ(true);
+    else if (st.qt > L.time) endQ(false);
+  }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+  // ---------- drawing ----------
+  function shade(hex, k) {
+    const n = parseInt(hex.slice(1), 16), f = v => Math.max(0, Math.min(255, Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k))));
+    return '#' + ((1 << 24) | (f(n >> 16) << 16) | (f((n >> 8) & 255) << 8) | f(n & 255)).toString(16).slice(1);
+  }
+  function seg(a, b, w, c) { ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+  function rotRect(cx, cy, w, h, ang, c) { ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.fillStyle = c; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.restore(); }
+
+  function drawRoom() {
+    ctx.fillStyle = '#4a4552'; ctx.fillRect(-OX / K, -OY / K, W / K, H / K);
+    // gold folding screen (金屏風)
+    const panels = 6, x0 = 40, pw = 150, y0 = 90, ph = 420;
+    for (let i = 0; i < panels; i++) {
+      const g = ctx.createLinearGradient(x0 + i * pw, 0, x0 + (i + 1) * pw, 0);
+      const a = i % 2 ? '#e7c768' : '#c99f3a', b = i % 2 ? '#c99f3a' : '#e7c768';
+      g.addColorStop(0, a); g.addColorStop(1, b);
+      ctx.fillStyle = g; ctx.fillRect(x0 + i * pw, y0, pw, ph);
+      ctx.fillStyle = 'rgba(255,255,255,.12)'; for (let k = 0; k < 6; k++) ctx.fillRect(x0 + i * pw + 6, y0 + 20 + k * 70, pw - 12, 2);
+    }
+    ctx.fillStyle = '#5a3a1e'; ctx.fillRect(x0 - 6, y0 - 8, panels * pw + 12, 10); ctx.fillRect(x0 - 6, y0 + ph - 2, panels * pw + 12, 10);
+    // floor
+    ctx.fillStyle = '#6b5f4f'; ctx.fillRect(-OX / K, 640, W / K, H / K);
+  }
+  function drawMan() {
+    const P = bodyPts();
+    const SUIT = '#2b3245', SHIRT = '#ffffff', SKIN = '#f1c9a0', HAIR = '#2a2420';
+    // legs (behind the table)
+    seg({ x: HIP.x - 6, y: HIP.y }, { x: HIP.x - 8, y: 636 }, 30, shade(SUIT, -0.15));
+    seg({ x: HIP.x + 8, y: HIP.y }, { x: HIP.x + 12, y: 636 }, 30, SUIT);
+    ctx.fillStyle = '#111'; ctx.fillRect(HIP.x - 26, 630, 54, 12);
+    // far arm
+    const armRoot = { x: P.sh.x - Math.sin(P.th) * 14, y: P.sh.y + Math.cos(P.th) * 14 };
+    const elbow = { x: armRoot.x + Math.sin(st.armA) * 70, y: armRoot.y + Math.cos(st.armA) * 70 };
+    const hand = { x: elbow.x + Math.sin(st.armA + st.armB) * 64, y: elbow.y + Math.cos(st.armA + st.armB) * 64 };
+    seg(armRoot, elbow, 24, shade(SUIT, -0.25)); seg(elbow, hand, 20, shade(SUIT, -0.25));
+    // torso (jacket over shirt, red tie)
+    const mid = { x: (HIP.x + P.sh.x) / 2, y: (HIP.y + P.sh.y) / 2 };
+    rotRect(mid.x, mid.y, 74, TORSO + 24, P.th, SUIT);
+    rotRect(mid.x + Math.cos(P.th) * 22, mid.y + Math.sin(P.th) * 22, 18, TORSO - 10, P.th, SHIRT);
+    rotRect(mid.x + Math.cos(P.th) * 26 - Math.sin(P.th) * 10, mid.y + Math.sin(P.th) * 26 + Math.cos(P.th) * 10, 8, TORSO - 50, P.th, '#c0262c');
+    // neck + head
+    seg(P.sh, P.nk, 22, SKIN);
+    ctx.save(); ctx.translate(P.hd.x, P.hd.y); ctx.rotate(P.ha);
+    ctx.fillStyle = SKIN; ctx.fillRect(-HEAD_R, -HEAD_R, HEAD_R * 2, HEAD_R * 2);
+    ctx.fillStyle = HAIR; ctx.fillRect(-HEAD_R - 2, -HEAD_R - 6, HEAD_R * 2 + 4, 16); ctx.fillRect(-HEAD_R - 2, -HEAD_R, 14, HEAD_R + 6);
+    // face looks to the right (toward the press)
+    ctx.fillStyle = '#222'; ctx.fillRect(HEAD_R - 26, -8, 18, 4);                 // eyebrow
+    ctx.fillStyle = '#222'; ctx.fillRect(HEAD_R - 20, 0, 6, 6);                   // eye
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 3; ctx.strokeRect(HEAD_R - 26, -4, 18, 14); // glasses
+    ctx.fillStyle = shade(SKIN, -0.12); ctx.fillRect(HEAD_R - 2, 4, 8, 10);         // nose
+    ctx.fillStyle = '#7a3b2e'; ctx.fillRect(HEAD_R - 18, 20, 12, 3);               // mouth
+    ctx.fillStyle = shade(SKIN, -0.1); ctx.fillRect(-6, -2, 10, 14);              // ear
+    ctx.restore();
+    // near arm
+    const r2 = { x: P.sh.x + Math.sin(P.th) * -4, y: P.sh.y + 10 };
+    const e2 = { x: r2.x + Math.sin(st.armA * 1.1 + 0.05) * 72, y: r2.y + Math.cos(st.armA * 1.1 + 0.05) * 72 };
+    const h2 = { x: e2.x + Math.sin(st.armA + st.armB * 1.2 + 0.1) * 64, y: e2.y + Math.cos(st.armA + st.armB * 1.2 + 0.1) * 64 };
+    seg(r2, e2, 26, SUIT); seg(e2, h2, 22, SUIT);
+    ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(h2.x, h2.y, 11, 0, 7); ctx.fill();
+    // sweat
+    st.sweat.forEach(s => { ctx.fillStyle = '#9fd6ff'; ctx.fillRect(s.x, s.y, 6, 9); });
+  }
+  function drawTable() {
+    // white cloth table in front of the man
+    ctx.fillStyle = '#e9e6df'; ctx.fillRect(TABLE_X0, TABLE_Y, TABLE_X1 - TABLE_X0, 128);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(TABLE_X0 - 6, TABLE_Y - 6, TABLE_X1 - TABLE_X0 + 12, 14);
+    ctx.fillStyle = 'rgba(0,0,0,.06)'; for (let x = TABLE_X0 + 30; x < TABLE_X1; x += 46) ctx.fillRect(x, TABLE_Y + 10, 4, 118);
+    // name plate
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(610, TABLE_Y - 34, 120, 30); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.strokeRect(610, TABLE_Y - 34, 120, 30);
+    ctx.fillStyle = '#222'; ctx.font = '16px ' + UI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('代表取締役', 670, TABLE_Y - 19);
+    // microphones with press flags
+    const cols = ['#d8402e', '#2f6fd8', '#2fa36b', '#e09a1a'];
+    [470, 505, 540, 575].forEach((mx, i) => {
+      ctx.save(); ctx.translate(mx, TABLE_Y - 4); ctx.rotate(st.mics[i]);
+      ctx.fillStyle = '#333'; ctx.fillRect(-3, -70, 6, 70); ctx.fillRect(-12, -4, 24, 6);
+      ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(0, -76, 10, 0, 7); ctx.fill();
+      ctx.fillStyle = cols[i]; ctx.fillRect(-11, -58, 22, 16); ctx.fillStyle = '#fff'; ctx.font = '11px ' + PX; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('ABCD'[i], 0, -50);
+      ctx.restore();
+    });
+  }
+  function drawPress() {
+    // silhouettes of the press with cameras, bottom right
+    for (let i = 0; i < 5; i++) {
+      const x = (PORTRAIT ? 470 : 760) + i * 58, y = (PORTRAIT ? 660 : 610) + (i % 2) * 24;
+      ctx.fillStyle = '#17151b';
+      ctx.beginPath(); ctx.arc(x, y - 40, 22, 0, 7); ctx.fill();
+      ctx.fillRect(x - 32, y - 18, 64, 140);
+      ctx.fillRect(x - 46, y - 52, 34, 24); ctx.fillStyle = '#2a2730'; ctx.fillRect(x - 58, y - 46, 14, 12);
+    }
+    st.flashes.forEach(f => {
+      if (f.t < 0) return;
+      const a = 1 - f.t / 0.25;
+      ctx.fillStyle = 'rgba(255,251,224,' + a + ')'; ctx.beginPath(); ctx.arc(f.x, f.y, 22 + f.t * 120, 0, 7); ctx.fill();
+    });
+    if (st.flashes.some(f => f.t >= 0 && f.t < 0.06)) { ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(-OX / K, -OY / K, W / K, H / K); }
+  }
+  function drawHudCanvas() {
+    if (st.phase !== 'play' && st.phase !== 'between') return;
+    const Q = st.cur || makeQ(0), TOL = st.lv ? st.lv.tol : 9, NEED = st.lv ? st.lv.need : 2, QTIME = st.lv ? st.lv.time : 16;
+    // reporter's line
+    if (st.say) {
+      ctx.font = '700 24px ' + UI; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const w = ctx.measureText(st.say).width + 36, x = PORTRAIT ? Math.max(VIEW.x + 10, VIEW.x + VIEW.w - w - 10) : Math.min(960 - w, 610), y = PORTRAIT ? VIEW.y + 250 : 70;
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y - 26, w, 52);
+      ctx.beginPath(); ctx.moveTo(x + w - 60, y + 26); ctx.lineTo(x + w - 30, y + 26); ctx.lineTo(x + w - 20, y + 50); ctx.fill();
+      ctx.fillStyle = '#1f1d24'; ctx.fillText(st.say, x + 18, y + 1);
+      ctx.font = '13px ' + PX; ctx.fillStyle = '#d8b24a'; ctx.fillText('記者', x, y - 38);
+    }
+    if (st.phase !== 'play') return;
+    // protractor: target band and current angle, drawn around the hip
+    const r = 120;
+    ctx.save(); ctx.translate(HIP.x, HIP.y);
+    ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, r, -Math.PI / 2, 0); ctx.stroke();
+    ctx.strokeStyle = 'rgba(79,191,122,.75)'; ctx.lineWidth = 12;
+    ctx.beginPath(); ctx.arc(0, 0, r, -Math.PI / 2 + (Q.angle - TOL) * D2R, -Math.PI / 2 + (Q.angle + TOL) * D2R); ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+    const a = -Math.PI / 2 + st.th * D2R; ctx.beginPath(); ctx.moveTo(Math.cos(a) * (r - 18), Math.sin(a) * (r - 18)); ctx.lineTo(Math.cos(a) * (r + 18), Math.sin(a) * (r + 18)); ctx.stroke();
+    ctx.restore();
+    ctx.font = '700 22px ' + UI; ctx.fillStyle = '#ffffff'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    const qx = PORTRAIT ? VIEW.x + 20 : 60, qy = PORTRAIT ? VIEW.y + 120 : 60;
+    ctx.font = (PORTRAIT ? '900 34px ' : '700 22px ') + UI;
+    ctx.fillText(Q.name + '　' + Q.angle + '°', qx, qy);
+    ctx.font = '16px ' + PX; ctx.fillStyle = '#ffe9a3'; ctx.font = (PORTRAIT ? '22px ' : '16px ') + PX; ctx.fillText('いま ' + Math.round(st.th) + '°' + (st.ph > 12 ? '　顔：伏せている' : '　顔：上がっている'), qx, qy + (PORTRAIT ? 38 : 28));
+    // sincerity bar
+    const bx = qx, by = qy + (PORTRAIT ? 56 : 44), bw = PORTRAIT ? 490 : 240;
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(bx, by, bw, 14);
+    ctx.fillStyle = '#4fbf7a'; ctx.fillRect(bx, by, bw * Math.min(1, st.prog / NEED), 14);
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(bx + bw * Math.min(1, st.qt / QTIME) - 1, by - 4, 2, 22);
+  }
+  function drawPull() {
+    if (!st.finger) return;
+    const P = bodyPts(), f = st.finger;
+    const d = Math.hypot(f.x - P.hd.x, f.y - P.hd.y);
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = Math.max(2, 8 - d / 60); ctx.setLineDash([10, 8]);
+    ctx.beginPath(); ctx.moveTo(P.hd.x, P.hd.y);
+    ctx.quadraticCurveTo((P.hd.x + f.x) / 2, (P.hd.y + f.y) / 2 + 30 + Math.sin(st.t * 9) * 8, f.x, f.y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.arc(f.x, f.y, 34, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(f.x, f.y, 34, 0, 7); ctx.stroke();
+  }
+  function drawTexts() {
+    st.texts.forEach(t => {
+      ctx.globalAlpha = Math.max(0, 1 - t.t / 1.8); ctx.font = '900 ' + t.size + 'px ' + UI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 6; ctx.strokeStyle = '#1f1d24'; ctx.strokeText(t.txt, t.x, t.y); ctx.fillStyle = t.color; ctx.fillText(t.txt, t.x, t.y);
+    });
+    ctx.globalAlpha = 1;
+  }
+  function draw() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#3a3640'; ctx.fillRect(0, 0, W, H);
+    const sx = st.shake ? (Math.random() - 0.5) * 10 * st.shake : 0;
+    ctx.save(); ctx.beginPath(); ctx.rect(CX, 0, CW, H); ctx.clip();
+    ctx.setTransform(DPR * K, 0, 0, DPR * K, DPR * (OX + sx * K), DPR * OY);
+    drawRoom(); drawMan(); drawTable(); drawPress(); drawHudCanvas(); drawPull(); drawTexts();
+    ctx.restore();
+  }
+
+  let last = performance.now();
+  function loop(now) { const dt = Math.min(0.025, (now - last) / 1000); last = now; update(dt); draw(); requestAnimationFrame(loop); }
+  hud();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+
+</html>
