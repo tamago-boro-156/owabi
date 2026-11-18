@@ -41,6 +41,9 @@ body { background: #3a3640; color: var(--paper); font-family: var(--ui); overflo
 .hud { position: fixed; top: env(safe-area-inset-top, 0px); left: 50%; transform: translateX(-50%); width: min(100%, 60vh); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
   padding: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
 .chip { background: var(--panel); border: 2px solid #000; padding: 6px 12px; font-family: var(--pixel); }
+.chip.snd { pointer-events: auto; cursor: pointer; color: var(--paper); text-align: left; margin-left: auto; }
+.chip.snd[aria-pressed="false"] .v { color: #8a8590; }
+.chip.snd:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .chip .k { display: block; font-size: 12px; color: var(--gold); letter-spacing: .1em; }
 .chip .v { font-size: 22px; font-variant-numeric: tabular-nums; }
 .pads { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; gap: 12px;
@@ -89,6 +92,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
 <div class="hud">
   <div class="chip"><span class="k">誠意</span><span class="v" id="score">0</span></div>
   <div class="chip"><span class="k">謝った回数</span><span class="v" id="qno">0</span></div>
+  <button class="chip snd" id="sndBtn" type="button" aria-pressed="true"><span class="k">音</span><span class="v" id="sndV">ON</span></button>
 </div>
 <div class="overlay" id="intro">
   <div class="panel">
@@ -175,12 +179,14 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     th: 0, thv: 0, ph: 0, phv: 0, armA: 0, armV: 0, armB: 0, armBV: 0,
     hip: false, neck: false, bonks: 0, qBonks: 0, wobble: 0,
     mics: [0, 0, 0, 0], micV: [0, 0, 0, 0], flashes: [], texts: [], say: null, sayT: 0, sweat: [],
+    water: { glass: 0, glassV: 0, bottle: 0, bottleV: 0, spilled: false, pour: 0, puddle: 0, stain: 0, drops: [] },
     lastShoulder: null, lastSV: { x: 0, y: 0 }, shake: 0
   };
 
   // ---------- audio ----------
   let ac = null;
-  const audio = () => { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; };
+  let soundOn = true; try { soundOn = localStorage.getItem('owabi-sound') !== 'off'; } catch (e) {}
+  const audio = () => { if (!soundOn) return null; if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; };
   function noise(dur, freq, vol, type) {
     if (!audio()) return; const t = ac.currentTime, b = ac.createBuffer(1, ac.sampleRate * dur, ac.sampleRate), d = b.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -197,13 +203,15 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     bonk: () => { tone(160, 60, 0.35, 0.5, 'triangle'); noise(0.15, 300, 0.5); },
     clatter: () => { noise(0.25, 1800, 0.25); },
     ok: () => { tone(660, 990, 0.18, 0.15); setTimeout(() => tone(990, 1320, 0.25, 0.15), 120); },
-    fail: () => tone(300, 120, 0.5, 0.15, 'square')
+    fail: () => tone(300, 120, 0.5, 0.15, 'square'),
+    splash: () => { noise(0.45, 700, 0.5, 'lowpass'); setTimeout(() => noise(0.25, 1500, 0.2), 120); }
   };
 
   // ---------- flow ----------
   function startGame() {
     Object.assign(st, { tgt: 0, phase: 'play', q: 0, cur: makeQ(0), lv: level(0), qt: 0, prog: 0, score: 0, results: [], th: 0, thv: 0, ph: 0, phv: 0, armA: 0, armV: 0, armB: 0, armBV: 0,
-      bonks: 0, qBonks: 0, wobble: 0, mics: [0, 0, 0, 0], micV: [0, 0, 0, 0], flashes: [], texts: [], say: null, sweat: [] });
+      bonks: 0, qBonks: 0, wobble: 0, mics: [0, 0, 0, 0], micV: [0, 0, 0, 0], flashes: [], texts: [], say: null, sweat: [],
+      water: { glass: 0, glassV: 0, bottle: 0, bottleV: 0, spilled: false, pour: 0, puddle: 0, stain: 0, drops: [] } });
     $('intro').hidden = true; $('result').hidden = true; askQ(); hud();
   }
   function askQ() {
@@ -263,6 +271,9 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
   ['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, e => { if (st.fingerId === e.pointerId) { st.finger = null; st.fingerId = null; } }));
   $('startBtn').addEventListener('click', () => { audio(); startGame(); });
   $('againBtn').addEventListener('click', startGame);
+  function renderSound() { $('sndBtn').setAttribute('aria-pressed', soundOn); $('sndV').textContent = soundOn ? 'ON' : 'OFF'; }
+  $('sndBtn').addEventListener('click', () => { soundOn = !soundOn; try { localStorage.setItem('owabi-sound', soundOn ? 'on' : 'off'); } catch (e) {} if (!soundOn && ac) ac.suspend(); else audio(); renderSound(); });
+  renderSound();
   // the public address of the game: the page itself when it is hosted on its own site, otherwise this artifact
   function shareUrl() { return /github\.io$/.test(location.hostname) ? location.origin + location.pathname : 'https://claude.ai/artifact/SdxQ2h5aNdcDH2RA67DSC7'; }
   $('copyBtn').addEventListener('click', () => {
@@ -316,11 +327,15 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     if (P.hd.x > TABLE_X0 - 10 && P.hd.y + HEAD_R * 0.8 > TABLE_Y) {
       if (st.thv > 25 || st.phv > 60) {
         st.bonks++; st.qBonks++; sfx.bonk(); st.shake = 1; floatText('ゴンッ！', P.hd.x + 30, P.hd.y - 40, '#ff6a50', 40);
+        knockWater(1);   // the whole table jumps
         if (st.phase === 'play') { reporter(pick(['「今の、わざとですか？」', '「大丈夫ですか！？」', '「机に謝ってどうするんですか」', '「いい音しましたね」', '「頭突きは謝罪じゃないです」', '「机が謝られてます」', '「救急車、呼びます？」'])); st.prog = Math.max(0, st.prog - 0.8); }
         for (let i = 0; i < 4; i++) st.flashes.push({ x: (PORTRAIT ? 460 : 700) + Math.random() * 280, y: (PORTRAIT ? 580 : 520) + Math.random() * 120, t: -i * 0.06 });
       }
       st.thv = -Math.abs(st.thv) * 0.5 - 30; st.phv = -Math.abs(st.phv) * 0.4;
     }
+    // head touching the glass or the bottle
+    if (Math.hypot(P.hd.x - GLASS_X, P.hd.y - (TABLE_Y - 40)) < HEAD_R + 14 || Math.hypot(P.hd.x - BOTTLE_X, P.hd.y - (TABLE_Y - 80)) < HEAD_R + 12) knockWater(0.8);
+    updateWater(dt);
     // knocking the microphones
     const micX = [470, 505, 540, 575];
     micX.forEach((mx, i) => {
@@ -429,6 +444,54 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     // sweat
     st.sweat.forEach(s => { ctx.fillStyle = '#9fd6ff'; ctx.fillRect(s.x, s.y, 6, 9); });
   }
+  // ---------- water on the table ----------
+  const GLASS_X = 446, BOTTLE_X = 414;
+  function knockWater(force) {
+    const w = st.water;
+    if (!w.glassV && w.glass < 0.1) { w.glassV = 5 + force * 3; }
+    if (!w.bottleV && w.bottle < 0.1 && Math.random() < 0.7) { w.bottleV = 3 + force * 2; }
+  }
+  function updateWater(dt) {
+    const w = st.water;
+    if (w.glassV) { w.glass += w.glassV * dt; if (w.glass >= 1.5) { w.glass = 1.5; w.glassV = 0; if (!w.spilled) spill(); } }
+    if (w.bottleV) { w.bottle += w.bottleV * dt; if (w.bottle >= 1.45) { w.bottle = 1.45; w.bottleV = 0; floatText('ゴロッ', BOTTLE_X + 30, TABLE_Y - 40, '#ffffff', 20); } }
+    if (w.spilled) {
+      w.pour = Math.max(0, w.pour - dt);
+      w.puddle = Math.min(1, w.puddle + dt * 0.9);
+      if (w.puddle > 0.5) w.stain = Math.min(1, w.stain + dt * 0.25);
+      if (w.pour > 0) for (let i = 0; i < 3; i++) w.drops.push({ x: GLASS_X + 30, y: TABLE_Y - 14, vx: 60 + Math.random() * 120, vy: -60 - Math.random() * 80, t: 0 });
+      if (w.puddle > 0.6 && Math.random() < dt * 4) w.drops.push({ x: GLASS_X + 20 + Math.random() * 150 * w.puddle, y: TABLE_Y + 8, vx: 0, vy: 20, t: 0 });
+    }
+    w.drops.forEach(d => { d.t += dt; d.vy += 900 * dt; d.x += d.vx * dt; d.y += d.vy * dt; });
+    // poured drops vanish when they land on the table; drips off the front edge fall to the floor
+    w.drops = w.drops.filter(d => d.y < 650 && !(d.vx && d.y > TABLE_Y - 2 && d.t > 0.05));
+  }
+  function spill() {
+    const w = st.water; w.spilled = true; w.pour = 0.7;
+    sfx.splash(); floatText('バシャッ', GLASS_X + 40, TABLE_Y - 70, '#9fd6ff', 30);
+    if (st.phase === 'play') reporter(pick(['「水！ 水こぼれてます！」', '「誰か拭くもの！」', '「今の水、謝罪に含まれます？」', '「マイクが濡れる！」']));
+  }
+  function drawWater() {
+    const w = st.water;
+    // puddle on the table top and the wet stain soaking down the cloth
+    if (w.puddle > 0) {
+      ctx.fillStyle = 'rgba(120,180,230,.55)'; ctx.fillRect(GLASS_X + 6, TABLE_Y - 4, 170 * w.puddle, 5);
+      if (w.stain > 0) { ctx.fillStyle = 'rgba(100,140,180,.28)'; ctx.fillRect(GLASS_X + 14, TABLE_Y + 8, 130 * w.puddle, 90 * w.stain); }
+    }
+    // plastic bottle
+    ctx.save(); ctx.translate(BOTTLE_X + 10, TABLE_Y - 2); ctx.rotate(w.bottle);
+    ctx.fillStyle = 'rgba(200,230,255,.85)'; ctx.fillRect(-10, -66, 20, 66);
+    ctx.fillStyle = '#5aa0d8'; ctx.fillRect(-10, -44, 20, 16);
+    ctx.fillStyle = 'rgba(200,230,255,.85)'; ctx.fillRect(-6, -76, 12, 10); ctx.fillStyle = '#2f6fd8'; ctx.fillRect(-6, -82, 12, 7);
+    ctx.restore();
+    // glass of water
+    ctx.save(); ctx.translate(GLASS_X + 12, TABLE_Y - 2); ctx.rotate(w.glass);
+    ctx.fillStyle = 'rgba(220,240,255,.55)'; ctx.fillRect(-12, -40, 24, 40);
+    if (!w.spilled) { ctx.fillStyle = 'rgba(120,180,230,.75)'; ctx.fillRect(-10, -26, 20, 24); }
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2; ctx.strokeRect(-12, -40, 24, 40);
+    ctx.restore();
+    w.drops.forEach(d => { ctx.fillStyle = 'rgba(140,200,245,.9)'; ctx.fillRect(d.x - 3, d.y - 3, 6, 6); });
+  }
   function drawTable() {
     // white cloth table in front of the man
     ctx.fillStyle = '#e9e6df'; ctx.fillRect(TABLE_X0, TABLE_Y, TABLE_X1 - TABLE_X0, 128);
@@ -437,6 +500,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     // name plate
     ctx.fillStyle = '#ffffff'; ctx.fillRect(610, TABLE_Y - 34, 120, 30); ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.strokeRect(610, TABLE_Y - 34, 120, 30);
     ctx.fillStyle = '#222'; ctx.font = '16px ' + UI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('代表取締役', 670, TABLE_Y - 19);
+    drawWater();
     // microphones with press flags
     const cols = ['#d8402e', '#2f6fd8', '#2fa36b', '#e09a1a'];
     [470, 505, 540, 575].forEach((mx, i) => {
