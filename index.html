@@ -284,12 +284,8 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     reporter(pick(['「押さないで！」', '「仲間割れですか？」', '「後ろの方、落ち着いて！」', '「今の、誰が押したんですか」']));
   }
   const allBodies = () => [st].concat(st.crew);
-  // 1回クリアするごとに仕切り直し：体はまっすぐに戻り、マイクと水も元どおりに
-  function resetStage() {
-    st.mics = [0, 0, 0, 0]; st.micV = [0, 0, 0, 0];
-    st.water = { glass: 0, glassV: 0, bottle: 0, bottleV: 0, spilled: false, pour: 0, puddle: 0, stain: 0, drops: [] };
-    st.nb = null; st.bumpAt = 0; st.tgt = 0;
-  }
+  // 1回クリアするごとに、体だけまっすぐに戻す（マイクや水はそのまま）
+  function resetStage() { st.tgt = 0; }
   function reporter(txt) { st.say = txt; st.sayT = 0; }
   function floatText(txt, x, y, color, size) { st.texts.push({ txt, x, y, t: 0, color: color || '#ffffff', size: size || 30 }); }
   function hud() { $('score').textContent = Math.round(st.score); $('qno').textContent = st.q; }
