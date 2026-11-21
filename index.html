@@ -256,9 +256,12 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
       tgt: 0, phase: 'open', q: 0, cur: makeQ(0), lv: level(0), qt: 0, prog: 0, score: 0, results: [], th: 0, thv: 0, ph: 0, phv: 0, armA: 0, armV: 0, armB: 0, armBV: 0,
       bonks: 0, qBonks: 0, wobble: 0, mics: [0, 0, 0, 0], micV: [0, 0, 0, 0], flashes: [], texts: [], say: null, sweat: [],
       water: { glass: 0, glassV: 0, bottle: 0, bottleV: 0, spilled: false, pour: 0, puddle: 0, stain: 0, drops: [] } });
+    // はじめての会見（モードごと）は、最初の3回をやさしく。妨害も遅めに
+    let played = false; try { played = !!localStorage.getItem(playedKey()); } catch (e) {}
+    st.easy = !played; st.touched = false;
     $('intro').hidden = true; $('result').hidden = true; reporter(null); hud();
   }
-  // 妨害イベント：4回目の謝罪から、ときどき起きる
+  const playedKey = () => st.mode === 'trio' ? 'owabi-played3' : 'owabi-played';
   // 妨害と無茶ぶり。3人のときは役員の裏切りも混ざる
   const EVENTS = ['faceup', 'howl', 'bump', 'smile', 'blame'];
   const TRIO_EVENTS = ['stand', 'deep', 'nod'];
@@ -267,8 +270,12 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     st.qt = 0; st.prog = 0; st.qBonks = 0; st.wobble = 0;
     st.cur = makeQ(st.q); st.lv = level(st.q);
     if (st.mode === 'trio') st.lv.tol += 3;   // 3人そろえるぶん、幅は少し広め
+    if (st.easy && st.q < 3) {                 // はじめての会見の最初の3回
+      st.lv.tol += 8; st.lv.time += 8; st.lv.wob *= 0.5; st.lv.need = 1.5;
+      if (st.q === 0) floatText('はじめての会見：最初の3回はやさしめです', 470, 470, '#ffe9a3', 22);
+    }
     st.ev = null;
-    if (st.q >= 3 && Math.random() < Math.min(0.55, 0.12 + st.q * 0.03)) st.ev = { type: pick(st.mode === 'trio' ? EVENTS.concat(TRIO_EVENTS, TRIO_EVENTS) : EVENTS), at: 1.2 + Math.random() * 3, fired: false };
+    if (st.q >= (st.easy ? 6 : 3) && Math.random() < Math.min(0.55, 0.12 + st.q * 0.03)) st.ev = { type: pick(st.mode === 'trio' ? EVENTS.concat(TRIO_EVENTS, TRIO_EVENTS) : EVENTS), at: 1.2 + Math.random() * 3, fired: false };
     reporter('「' + st.cur.ask + '」');
   }
   function fireEvent(type) {
@@ -332,6 +339,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
   }
   function showResult() {
     st.phase = 'result';
+    try { localStorage.setItem(playedKey(), '1'); } catch (e) {}
     const total = Math.round(st.score), n = st.q, b = st.results.reduce((a, r) => a + r.bonks, 0);
     const micsDown = st.mics.filter(m => Math.abs(m) > 1).length;
     let best = 0; try { best = +localStorage.getItem(bestKey()) || 0; } catch (e) {}
@@ -415,7 +423,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
 
   // ---------- input (finger) ----------
   const toV = (x, y) => ({ x: (x - OX) / K, y: (y - OY) / K });
-  cv.addEventListener('pointerdown', e => { audio(); cv.setPointerCapture(e.pointerId); st.fingerId = e.pointerId; st.finger = toV(e.clientX, e.clientY); });
+  cv.addEventListener('pointerdown', e => { audio(); st.touched = true; cv.setPointerCapture(e.pointerId); st.fingerId = e.pointerId; st.finger = toV(e.clientX, e.clientY); });
   cv.addEventListener('pointermove', e => { if (st.fingerId === e.pointerId) st.finger = toV(e.clientX, e.clientY); });
   ['pointerup', 'pointercancel'].forEach(ev => cv.addEventListener(ev, e => { if (st.fingerId === e.pointerId) { st.finger = null; st.fingerId = null; } }));
   $('startBtn').addEventListener('click', () => { audio(); startGame('solo'); });
@@ -748,6 +756,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     ctx.font = '700 22px ' + UI; ctx.fillStyle = '#ffffff'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     const qx = PORTRAIT ? VIEW.x + 20 : 60, qy = PORTRAIT ? VIEW.y + 120 : 60;
     ctx.font = (PORTRAIT ? '900 34px ' : '700 22px ') + UI;
+    if (st.easy && st.q < 3) { ctx.save(); ctx.font = '700 18px ' + UI; ctx.fillStyle = '#ffe9a3'; ctx.fillText('やさしめ', qx, qy - 40); ctx.restore(); }
     ctx.fillText(Q.name + '　' + Q.angle + '°' + (Q.faceUp ? '　顔を上げて' : Q.deepFace ? '　顔を深く' : Q.chiefExtra ? '　社長は' + tgtOf(st) + '°' : ''), qx, qy);
     ctx.font = '16px ' + PX; ctx.fillStyle = '#ffe9a3'; ctx.font = (PORTRAIT ? '22px ' : '16px ') + PX; if (st.mode === 'trio') {
       ctx.font = '20px ' + PX; let x = qx;
@@ -775,6 +784,22 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     lines.forEach((l, i) => ctx.fillText(l, x0 + w / 2, y0 + 110 - (lines.length - 1) * 22 + i * 44));
     ctx.globalAlpha = 1;
   }
+  // はじめての会見の1回目：指をどこへ引っぱればいいかの見本（まだ触っていないときだけ）
+  function drawHint() {
+    if (!st.easy || st.q !== 0 || st.phase !== 'play' || st.touched || st.finger) return;
+    const P = bodyPts(), a = tgtOf(st) * D2R, d = TORSO + NECK + HEAD_R - 45;
+    const tx = HIP.x + Math.sin(a) * d, ty = HIP.y - Math.cos(a) * d;
+    const u = (st.t % 2.2) / 1.6, k = Math.min(1, u), e = k * k * (3 - 2 * k);
+    const fx = P.hd.x + (tx - P.hd.x) * e, fy = P.hd.y + (ty - P.hd.y) * e;
+    ctx.strokeStyle = 'rgba(255,233,163,.9)'; ctx.lineWidth = 4; ctx.setLineDash([8, 8]);
+    ctx.beginPath(); ctx.moveTo(P.hd.x, P.hd.y); ctx.lineTo(tx, ty); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = '#ffe9a3'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(tx, ty, 30, 0, 7); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(fx, fy, 22, 0, 7); ctx.fill();
+    ctx.font = '700 24px ' + UI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 6; ctx.strokeStyle = '#1f1d24';
+    const msg = '頭を指でつかんで、ここまで引っぱる';
+    ctx.fillStyle = 'rgba(31,29,36,.85)'; ctx.fillRect(VIEW.x + 20, 566, VIEW.w - 40, 44);
+    ctx.fillStyle = '#ffe9a3'; ctx.fillText(msg, VIEW.x + VIEW.w / 2, 589);
+  }
   function drawPull() {
     if (!st.finger) return;
     const P = bodyPts(), f = st.finger;
@@ -797,7 +822,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     const sx = st.shake ? (Math.random() - 0.5) * 10 * st.shake : 0;
     ctx.save(); ctx.beginPath(); ctx.rect(CX, 0, CW, H); ctx.clip();
     ctx.setTransform(DPR * K, 0, 0, DPR * K, DPR * (OX + sx * K), DPR * OY);
-    drawRoom(); drawMen(); drawTable(); drawPress(); drawHudCanvas(); drawOpening(); drawPull(); drawTexts();
+    drawRoom(); drawMen(); drawTable(); drawPress(); drawHudCanvas(); drawOpening(); drawHint(); drawPull(); drawTexts();
     ctx.restore();
   }
 
