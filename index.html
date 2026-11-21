@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="グネグネ言うことを聞かない体の頭を指で引っぱり、記者が求める角度でお辞儀を決め続ける。失敗するまで終わらない謝罪会見ゲーム。">
+<meta name="description" content="グネグネ言うことを聞かない体の頭を指で引っぱり、記者が求める角度でお辞儀を決め続ける。不祥事ガチャ、役員3人モード、写真入りの翌朝の新聞つき。失敗するまで終わらない謝罪会見ゲーム。">
 <meta property="og:title" content="大変申し訳ございませんでした。">
 <meta property="og:description" content="グネグネの体で、記者が求める角度のお辞儀を決め続ける謝罪会見ゲーム。何回謝れるか。">
 <meta property="og:url" content="https://tamago-boro-156.github.io/owabi/">
@@ -89,6 +89,10 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
 .titles b { font-family: var(--news); font-size: 13px; }
 .titles span { background: #1a1814; color: #f4efe2; padding: 3px 9px; font-family: var(--pixel); font-size: 13px; }
 .titles span:first-of-type { background: var(--red); }
+.photo { margin: 0; display: grid; gap: 3px; }
+.photo img { width: 100%; display: block; border: 1px solid #1a1814; }
+.photo figcaption { font-size: 11px; color: #4a4538; }
+.cardimg { width: 100%; max-height: 60vh; object-fit: contain; border: 1px solid #b9b09a; background: #f4efe2; }
 .rows { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .rows .g { font-family: var(--pixel); }
 .total { font-family: var(--pixel); font-size: 18px; }
@@ -127,17 +131,31 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
       <div class="mast"><b>朝刊</b><span id="date"></span></div>
       <div class="kicker" id="kicker"></div>
       <h2 id="headline">見出し</h2>
+      <figure class="photo" id="photoBox" hidden><img id="photo" alt="会見の写真"><figcaption id="photoCap"></figcaption></figure>
       <p class="lead" id="lead"></p>
       <div class="rows" id="rows"></div>
       <div class="total" id="total"></div>
       <div class="titles" id="titles"></div>
     </div>
     <div class="share">
+      <button class="btn xbtn" id="cardShare" type="button">画像つきで投稿</button>
       <a class="btn xbtn" id="xShare" href="https://x.com/intent/post" target="_blank" rel="noopener">𝕏 でポスト</a>
       <button class="btn ghost" id="copyBtn" type="button">結果をコピー</button>
       <button class="btn" id="againBtn">もう一度、謝る</button>
     </div>
     <textarea id="shareText" readonly aria-label="ポストする文" hidden></textarea>
+  </div>
+</div>
+
+<div class="overlay" id="cardPanel" hidden>
+  <div class="panel">
+    <img class="cardimg" id="cardImg" alt="朝刊の画像">
+    <p class="sub">画像を保存してから「𝕏 を開く」を押し、投稿画面で保存した画像を添付してください。</p>
+    <div class="share">
+      <a class="btn" id="cardSave" download="owabi.png" href="#">画像を保存</a>
+      <a class="btn xbtn" id="cardX" href="https://x.com/intent/post" target="_blank" rel="noopener">𝕏 を開く</a>
+      <button class="btn ghost" id="cardClose" type="button">閉じる</button>
+    </div>
   </div>
 </div>
 
@@ -258,7 +276,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
       water: { glass: 0, glassV: 0, bottle: 0, bottleV: 0, spilled: false, pour: 0, puddle: 0, stain: 0, drops: [] } });
     // はじめての会見（モードごと）は、最初の3回をやさしく。妨害も遅めに
     let played = false; try { played = !!localStorage.getItem(playedKey()); } catch (e) {}
-    st.easy = !played; st.touched = false;
+    st.easy = !played; st.touched = false; st.photos = {}; st.bestPts = -1; st.card = null;
     $('intro').hidden = true; $('result').hidden = true; reporter(null); hud();
   }
   const playedKey = () => st.mode === 'trio' ? 'owabi-played3' : 'owabi-played';
@@ -330,6 +348,8 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
       grade = pts >= 85 ? '◎' : pts >= 60 ? '○' : '△';
       sfx.ok(); floatText(grade === '◎' ? pick(['誠意、伝わりました', '……お見事です', 'いい角度でした']) : pick(['……まあ、いいでしょう', 'ギリギリですね', '次はちゃんとお願いします']), 640, 210, '#ffe9a3', 28);
     } else { sfx.fail(); floatText('時間切れ', 640, 210, '#ff9a8a', 30); }
+    if (ok && pts > st.bestPts) { st.bestPts = pts; snap('best', Q.angle); }
+    if (!ok) snap('fail', Q.angle);
     st.score += pts; st.results.push({ Q, pts, grade, bonks: st.qBonks });
     st.wobT += st.wobble; if (ok && (Q.faceUp || Q.deepFace || Q.chiefExtra)) st.evCleared++;
     if (ok) st.q++;
@@ -369,6 +389,11 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     ].filter(x => x[0] > 0).sort((x, y) => y[0] - x[0]);
     if (n >= 20) head = '謝罪' + n + '回\n「謝り慣れすぎでは」と疑問の声';
     else if (picks.length) head = picks[0][1];
+    const ph = (picks.length && /頭突き|頭を|マイク/.test(head) && st.photos.bonk) ? ['bonk', st.photos.bonk] : st.photos.best ? ['best', st.photos.best] : st.photos.fail ? ['fail', st.photos.fail] : st.photos.bonk ? ['bonk', st.photos.bonk] : null;
+    const who3 = trio ? '社長（手前）ら役員3人' : '社長';
+    const cap = !ph ? '' : ph[0] === 'bonk' ? '机に頭を打ちつける' + who3 : ph[0] === 'best' ? ph[1].angle + '度で頭を下げる' + who3 : '求められた' + ph[1].angle + '度に届かない' + who3;
+    if (ph) { $('photo').src = ph[1].c.toDataURL('image/jpeg', 0.85); $('photoCap').textContent = cap + '＝会見場で'; }
+    $('photoBox').hidden = !ph;
     const titles = earnTitles(n, b, micsDown, S, trio);
     let lead = st.scandal.what + 'をめぐり、' + (trio ? '社長・専務・部長の3人がそろって会見を開き、' : '社長が会見を開き、') + (n ? n + '回にわたって頭を下げた。' : '頭を下げたものの、記者団の求める角度には一度も届かなかった。');
     const ev = st.evLog, evs = [];
@@ -391,9 +416,55 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     const text = '【大変申し訳ございませんでした。】\n「' + st.scandal.what + '」の謝罪会見で、' + (trio ? '役員3人で' : '') + n + '回頭を下げました。誠意スコア ' + total + '\n称号：' + titles[0] + '\n\n朝刊見出し「' + head.replace('\n', '　') + '」\n\n#大変申し訳ございませんでした #謝罪会見ゲーム';
     $('shareText').value = text + '\n' + shareUrl();
     $('xShare').href = 'https://x.com/intent/post?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(shareUrl());
+    st.share = { text, head, kicker: $('kicker').textContent, photo: ph && ph[1].c, cap, total, n, titles, trio };
+    st.card = null; buildCard().catch(() => {});
     $('result').hidden = false; $('againBtn').focus();
   }
 
+  // 画像つき投稿用の朝刊（1080×1350）
+  async function buildCard() {
+    try { await document.fonts.ready; } catch (e) {}
+    const I = st.share, c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
+    const g = c.getContext('2d'), M = '"Shippori Mincho", "Hiragino Mincho ProN", serif', X0 = 60, WD = 960;
+    g.fillStyle = '#f4efe2'; g.fillRect(0, 0, 1080, 1350);
+    g.strokeStyle = '#b9b09a'; g.lineWidth = 3; g.strokeRect(24, 24, 1032, 1302);
+    g.fillStyle = '#1a1814'; g.textBaseline = 'alphabetic';
+    g.font = '800 64px ' + M; g.textAlign = 'left'; g.fillText('朝刊', X0, 118);
+    const d = new Date(); g.font = '500 28px ' + UI; g.textAlign = 'right'; g.fillText(d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + (d.getDate() + 1) + '日', X0 + WD, 112);
+    g.fillRect(X0, 140, WD, 5); g.fillRect(X0, 151, WD, 2);
+    let y = 214;
+    g.fillStyle = '#d8402e'; g.fillRect(X0, y - 38, 10, 48);
+    g.fillStyle = '#1a1814'; g.textAlign = 'left'; let kf = 36; g.font = '800 36px ' + M; while (kf > 22 && g.measureText(I.kicker).width > WD - 30) { kf -= 2; g.font = '800 ' + kf + 'px ' + M; } g.fillText(I.kicker, X0 + 26, y);
+    const lines = I.head.split('\n'); let fs = 92;
+    g.font = '800 ' + fs + 'px ' + M; while (fs > 50 && lines.some(l => g.measureText(l).width > WD)) { fs -= 4; g.font = '800 ' + fs + 'px ' + M; }
+    y += 30; lines.forEach(l => { y += fs * 1.15; g.fillText(l, X0, y); });
+    y += 34;
+    if (I.photo) {
+      const ph = Math.min(620, 1350 - y - 290), pw = Math.round(ph * I.photo.width / I.photo.height), px = X0 + (WD - Math.min(WD, pw)) / 2;
+      g.drawImage(I.photo, px, y, Math.min(WD, pw), ph); g.strokeStyle = '#1a1814'; g.lineWidth = 2; g.strokeRect(px, y, Math.min(WD, pw), ph);
+      y += ph + 40; g.font = '500 26px ' + UI; g.fillStyle = '#4a4538'; g.fillText(I.cap + '＝会見場で', px, y);
+    }
+    y = Math.max(y + 70, 1120);
+    g.fillStyle = '#1a1814'; g.font = '40px ' + PX; g.fillText('謝った回数 ' + I.n + '　誠意スコア ' + I.total, X0, y);
+    y += 62; g.font = '700 26px ' + M; g.fillText('本日の称号', X0, y - 8);
+    let x = X0 + 160; g.font = '30px ' + PX;
+    I.titles.slice(0, 3).forEach((t, i) => { const w = g.measureText(t).width + 36; if (x + w > X0 + WD) return; g.fillStyle = i ? '#1a1814' : '#d8402e'; g.fillRect(x, y - 44, w, 52); g.fillStyle = '#f4efe2'; g.fillText(t, x + 18, y - 8); x += w + 12; });
+    g.fillStyle = '#1a1814'; g.fillRect(X0, 1250, WD, 2);
+    g.font = '700 28px ' + M; g.fillText('大変申し訳ございませんでした。', X0, 1296);
+    g.font = '500 22px ' + UI; g.textAlign = 'right'; g.fillText(GAME_URL.replace('https://', ''), X0 + WD, 1294);
+    st.card = c;
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    try { const f = new File([blob], 'owabi.png', { type: 'image/png' }); if (navigator.canShare && navigator.canShare({ files: [f] })) st.cardFile = f; else st.cardFile = null; } catch (e) { st.cardFile = null; }
+    return c;
+  }
+  const GAME_URL = 'https://tamago-boro-156.github.io/owabi/';
+  function openCard() {
+    if (!st.card) return;
+    if (st.cardFile) { navigator.share({ files: [st.cardFile], text: st.share.text + '\n' + shareUrl() }).catch(() => {}); return; }
+    const url = st.card.toDataURL('image/png');
+    $('cardImg').src = url; $('cardSave').href = url; $('cardX').href = $('xShare').href;
+    $('cardPanel').hidden = false;
+  }
   function newsStats(n, b, micsDown) {
     const ok = st.results.filter(r => r.grade !== '×'), perfect = st.results.filter(r => r.grade === '◎');
     const cnt = {}; perfect.forEach(r => cnt[r.Q.angle] = (cnt[r.Q.angle] || 0) + 1);
@@ -434,6 +505,8 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
   renderSound();
   // the public address of the game: the page itself when it is hosted on its own site, otherwise this artifact
   function shareUrl() { return /github\.io$/.test(location.hostname) ? location.origin + location.pathname : 'https://claude.ai/artifact/SdxQ2h5aNdcDH2RA67DSC7'; }
+  $('cardShare').addEventListener('click', openCard);
+  $('cardClose').addEventListener('click', () => { $('cardPanel').hidden = true; });
   $('copyBtn').addEventListener('click', () => {
     const t = $('shareText');
     navigator.clipboard.writeText(t.value).then(() => { $('copyBtn').textContent = 'コピーしました'; setTimeout(() => $('copyBtn').textContent = '結果をコピー', 1800); })
@@ -495,6 +568,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     const P = bodyPts();
     if (P.hd.x > TABLE_X0 - 10 && P.hd.y + HEAD_R * 0.8 > TABLE_Y) {
       if (st.thv > 25 || st.phv > 60) {
+        if (!st.photos.bonk || Math.random() < 0.35) snap('bonk');
         st.bonks++; st.qBonks++; sfx.bonk(); st.shake = 1; floatText('ゴンッ！', P.hd.x + 30, P.hd.y - 40, '#ff6a50', 40);
         knockWater(1);   // the whole table jumps
         if (st.phase === 'play') { reporter(pick(['「今の、わざとですか？」', '「大丈夫ですか！？」', '「机に謝ってどうするんですか」', '「いい音しましたね」', '「頭突きは謝罪じゃないです」', '「机が謝られてます」', '「救急車、呼びます？」'])); st.prog = Math.max(0, st.prog - 0.8); }
@@ -816,6 +890,26 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
       ctx.lineWidth = 6; ctx.strokeStyle = '#1f1d24'; ctx.strokeText(t.txt, t.x, t.y); ctx.fillStyle = t.color; ctx.fillText(t.txt, t.x, t.y);
     });
     ctx.globalAlpha = 1;
+  }
+  // 新聞の写真：その瞬間の会場を、文字や目盛りを抜いて描き直し、白黒にして切り取る
+  function snap(kind, angle) {
+    try {
+      ctx.save(); ctx.setTransform(DPR * K, 0, 0, DPR * K, DPR * OX, DPR * OY);
+      drawRoom(); drawMen(); drawTable(); drawPress();
+      ctx.restore();
+      const vx = VIEW.x, vy = 205, vw = VIEW.w, vh = 400;
+      const c = document.createElement('canvas'); c.width = 795; c.height = 600;
+      const g = c.getContext('2d');
+      g.drawImage(cv, (OX + vx * K) * DPR, (OY + vy * K) * DPR, vw * K * DPR, vh * K * DPR, 0, 0, c.width, c.height);
+      const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+      for (let i = 0; i < d.length; i += 4) {
+        let y = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+        y = Math.max(0, Math.min(255, (y - 128) * 1.25 + 128 + (Math.random() - 0.5) * 18));   // 少し硬調に、粒子も足す
+        d[i] = d[i + 1] = d[i + 2] = y;
+      }
+      g.putImageData(im, 0, 0);
+      st.photos[kind] = { c, angle };
+    } catch (e) {}
   }
   function draw() {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#3a3640'; ctx.fillRect(0, 0, W, H);
