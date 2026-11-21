@@ -85,6 +85,10 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
 .modes .btn { justify-self: stretch; font-size: 17px; padding: 10px 8px; }
 .modes .btn small { display: block; font-size: 11px; letter-spacing: 0; font-family: var(--ui); opacity: .9; }
 .btn.trio { background: #2b3245; }
+.titles { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+.titles b { font-family: var(--news); font-size: 13px; }
+.titles span { background: #1a1814; color: #f4efe2; padding: 3px 9px; font-family: var(--pixel); font-size: 13px; }
+.titles span:first-of-type { background: var(--red); }
 .rows { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .rows .g { font-family: var(--pixel); }
 .total { font-family: var(--pixel); font-size: 18px; }
@@ -126,6 +130,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
       <p class="lead" id="lead"></p>
       <div class="rows" id="rows"></div>
       <div class="total" id="total"></div>
+      <div class="titles" id="titles"></div>
     </div>
     <div class="share">
       <a class="btn xbtn" id="xShare" href="https://x.com/intent/post" target="_blank" rel="noopener">𝕏 でポスト</a>
@@ -247,20 +252,23 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
   // ---------- flow ----------
   function startGame(mode) {
     mode = mode === 'trio' ? 'trio' : mode === 'solo' ? 'solo' : st.mode;
-    Object.assign(st, { mode, crew: mode === 'trio' ? makeCrew() : [], nb: null, ev: null, evLog: {}, scandal: pick(SCANDALS), openT: 0, lastShoulder: null,
+    Object.assign(st, { mode, crew: mode === 'trio' ? makeCrew() : [], nb: null, ev: null, evLog: {}, scandal: pick(SCANDALS), openT: 0, lastShoulder: null, deepT: 0, shallowT: 0, wobT: 0, betrayLog: [], evCleared: 0,
       tgt: 0, phase: 'open', q: 0, cur: makeQ(0), lv: level(0), qt: 0, prog: 0, score: 0, results: [], th: 0, thv: 0, ph: 0, phv: 0, armA: 0, armV: 0, armB: 0, armBV: 0,
       bonks: 0, qBonks: 0, wobble: 0, mics: [0, 0, 0, 0], micV: [0, 0, 0, 0], flashes: [], texts: [], say: null, sweat: [],
       water: { glass: 0, glassV: 0, bottle: 0, bottleV: 0, spilled: false, pour: 0, puddle: 0, stain: 0, drops: [] } });
     $('intro').hidden = true; $('result').hidden = true; reporter(null); hud();
   }
   // 妨害イベント：4回目の謝罪から、ときどき起きる
-  const EVENTS = ['faceup', 'howl', 'bump'];
+  // 妨害と無茶ぶり。3人のときは役員の裏切りも混ざる
+  const EVENTS = ['faceup', 'howl', 'bump', 'smile', 'blame'];
+  const TRIO_EVENTS = ['stand', 'deep', 'nod'];
+  const tgtOf = b => Math.min(95, st.cur.angle + (b === st ? (st.cur.chiefExtra || 0) : 0));
   function askQ() {
     st.qt = 0; st.prog = 0; st.qBonks = 0; st.wobble = 0;
     st.cur = makeQ(st.q); st.lv = level(st.q);
     if (st.mode === 'trio') st.lv.tol += 3;   // 3人そろえるぶん、幅は少し広め
     st.ev = null;
-    if (st.q >= 3 && Math.random() < Math.min(0.55, 0.12 + st.q * 0.03)) st.ev = { type: pick(EVENTS), at: 1.2 + Math.random() * 3, fired: false };
+    if (st.q >= 3 && Math.random() < Math.min(0.55, 0.12 + st.q * 0.03)) st.ev = { type: pick(st.mode === 'trio' ? EVENTS.concat(TRIO_EVENTS, TRIO_EVENTS) : EVENTS), at: 1.2 + Math.random() * 3, fired: false };
     reporter('「' + st.cur.ask + '」');
   }
   function fireEvent(type) {
@@ -276,6 +284,24 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     } else if (type === 'bump') {
       if (st.mode === 'trio') { st.crew[0].thv += 230; st.bumpAt = st.t + 0.18; }
       else st.nb = newBody({ k: 30, d: 2.4, wm: 0.4, seed: 7, suit: '#3b3a40', hair: '#8d8780', off: { dx: -260, dy: -26, s: 0.92 }, t: 0, hit: false });
+    } else if (type === 'smile') {          // 無茶ぶり：笑っていたのでは → 顔を深く伏せ続ける
+      st.cur.deepFace = true; st.cur.faceUp = false; st.prog *= 0.3; st.lv.time += 3;
+      reporter(pick(['「今、笑っていませんでしたか？」', '「口元がゆるんでましたよ」', '「ニヤッとしましたよね？」']));
+      floatText('顔を深く伏せて！', 520, 300, '#ffe9a3', 32);
+    } else if (type === 'blame') {          // 無茶ぶり：責任は誰が → 社長がさらに深く
+      st.prog *= 0.3; st.lv.time += 3;
+      if (st.mode === 'trio') { st.cur.chiefExtra = 15; floatText('社長だけ、あと15°深く', 520, 300, '#ffe9a3', 30); }
+      else { st.cur.angle = Math.min(90, st.cur.angle + 15); st.cur.name = st.cur.angle + '度'; floatText('あと15°深く', 520, 300, '#ffe9a3', 32); }
+      reporter(pick(['「今回の責任は誰が取るんですか！」', '「社長の責任ですよね？」', '「責任の重さが角度に出てません！」']));
+    } else {                                // 役員の裏切り（3人のとき）
+      const b = pick(st.crew), dur = 2.6;
+      b.ov = { kind: type, until: st.t + dur }; st.lv.time += dur;
+      const say = {
+        stand: ['「' + b.name + '、なぜ直立してるんですか！」', b.name + 'が直立！', b.name + 'の突然の直立'],
+        deep: ['「' + b.name + 'だけ深すぎる！ 土下座ですか！」', b.name + 'が勝手に最敬礼！', b.name + 'の単独最敬礼'],
+        nod: ['「' + b.name + '、うなずいてる場合ですか！」', b.name + 'がうなずき出した！', b.name + 'の謎のうなずき']
+      }[type];
+      reporter(say[0]); floatText(say[1], 470, 330, '#ff9a8a', 30); st.betrayLog.push(say[2]);
     }
   }
   function bumpFront() {
@@ -298,6 +324,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
       sfx.ok(); floatText(grade === '◎' ? pick(['誠意、伝わりました', '……お見事です', 'いい角度でした']) : pick(['……まあ、いいでしょう', 'ギリギリですね', '次はちゃんとお願いします']), 640, 210, '#ffe9a3', 28);
     } else { sfx.fail(); floatText('時間切れ', 640, 210, '#ff9a8a', 30); }
     st.score += pts; st.results.push({ Q, pts, grade, bonks: st.qBonks });
+    st.wobT += st.wobble; if (ok && (Q.faceUp || Q.deepFace || Q.chiefExtra)) st.evCleared++;
     if (ok) st.q++;
     hud();
     if (!ok) { st.phase = 'done'; reporter('「もう結構です。会見は打ち切ります」'); setTimeout(showResult, 1800); }
@@ -318,11 +345,30 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     else if (n < 20) head = '謝罪' + n + '回の新記録\n会場から拍手';
     else head = '謝罪' + n + '回\n「謝り慣れすぎでは」と疑問の声';
     if (trio && n >= 3) head = head.replace(/^/, '役員3人で');
+    // いちばん目立った出来事を見出しにする（なければ回数の見出し）
+    const S = newsStats(n, b, micsDown);
+    const picks = [
+      [b >= 5 ? 9 : 0, '社長、謝罪中に\n頭突き' + b + '連発', '机は沈黙を守る'],
+      [micsDown >= 3 ? 8 : 0, '社長、謝罪会見で\nマイク' + micsDown + '本を破壊', ''],
+      [trio && st.betrayLog.length >= 2 ? 8 : 0, '役員の足並みそろわず\n' + (st.betrayLog[0] || '') + 'に騒然', ''],
+      [S.perfect >= 5 && S.favAngle ? 7 : 0, '誠意が伝わる\n奇跡の' + S.favAngle + '度', '記者団も思わず拍手'],
+      [st.evLog.smile && n >= 3 ? 6 : 0, '「笑っていたのでは」\n会見中に新たな疑惑', ''],
+      [S.wobAvg > 2.5 && n >= 3 ? 6 : 0, '「こんにゃくのよう」\n揺れ続ける謝罪に批判', ''],
+      [st.deepT > 8 && st.deepT > st.shallowT * 2 ? 5 : 0, '「深すぎて逆に怪しい」\n反省の方向性に疑問', ''],
+      [st.shallowT > 8 && st.shallowT > st.deepT * 2 ? 5 : 0, '「誠意が見えない」\n浅いお辞儀に批判集中', ''],
+      [st.water.spilled && n < 5 ? 4 : 0, '謝罪会見、水浸しに\n' + n + '回で打ち切り', ''],
+      [b >= 2 && b < 5 ? 3 : 0, '社長、机に頭を' + b + '回\n「わざとでは」の声', '']
+    ].filter(x => x[0] > 0).sort((x, y) => y[0] - x[0]);
+    if (n >= 20) head = '謝罪' + n + '回\n「謝り慣れすぎでは」と疑問の声';
+    else if (picks.length) head = picks[0][1];
+    const titles = earnTitles(n, b, micsDown, S, trio);
     let lead = st.scandal.what + 'をめぐり、' + (trio ? '社長・専務・部長の3人がそろって会見を開き、' : '社長が会見を開き、') + (n ? n + '回にわたって頭を下げた。' : '頭を下げたものの、記者団の求める角度には一度も届かなかった。');
     const ev = st.evLog, evs = [];
     if (ev.howl) evs.push('マイクのハウリング'); if (ev.faceup) evs.push('「顔を上げて」の声');
     if (ev.bump) evs.push(trio ? '専務の体当たり' : '隣の役員の体当たり');
-    if (evs.length) lead += '会見中は' + evs.join('や') + 'にも見舞われた。';
+    if (ev.smile) evs.push('「笑っていたのでは」との追及'); if (ev.blame) evs.push('「責任は誰が取るのか」との追及');
+    st.betrayLog.slice(0, 2).forEach(x => evs.push(x));
+    if (evs.length) lead += '会見中は' + evs.slice(0, 3).join('、') + 'にも見舞われた。';
     if (b) lead += '途中、机に頭を' + b + '回打ちつけ、';
     if (micsDown) lead += '報道各社のマイク' + micsDown + '本をなぎ倒した。';
     if (n >= 20) lead += 'あまりに滑らかな謝罪に、記者からは「謝罪に慣れすぎているのでは」「普段から何をしているのか」と別の疑惑が浮上している。';
@@ -332,11 +378,39 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     const d = new Date(); $('date').textContent = d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + (d.getDate() + 1) + '日';
     $('rows').innerHTML = st.results.slice(-8).map(r => '<span>' + r.Q.name + '（' + r.Q.angle + '°）</span><span>' + (r.bonks ? '頭を打った ×' + r.bonks : '') + '</span><span class="g">' + r.grade + ' ' + r.pts + '</span>').join('');
     $('total').textContent = '誠意スコア ' + total + (isBest ? '（ベスト更新）' : '　ベスト ' + best);
+    $('titles').innerHTML = '<b>本日の称号</b>' + titles.slice(0, 3).map(t => '<span>' + t + '</span>').join('');
     // text for X: the headline, the count and the score
-    const text = '【大変申し訳ございませんでした。】\n「' + st.scandal.what + '」の謝罪会見で、' + (trio ? '役員3人で' : '') + n + '回頭を下げました。誠意スコア ' + total + '\n\n朝刊見出し「' + head.replace('\n', '　') + '」\n\n#大変申し訳ございませんでした #謝罪会見ゲーム';
+    const text = '【大変申し訳ございませんでした。】\n「' + st.scandal.what + '」の謝罪会見で、' + (trio ? '役員3人で' : '') + n + '回頭を下げました。誠意スコア ' + total + '\n称号：' + titles[0] + '\n\n朝刊見出し「' + head.replace('\n', '　') + '」\n\n#大変申し訳ございませんでした #謝罪会見ゲーム';
     $('shareText').value = text + '\n' + shareUrl();
     $('xShare').href = 'https://x.com/intent/post?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(shareUrl());
     $('result').hidden = false; $('againBtn').focus();
+  }
+
+  function newsStats(n, b, micsDown) {
+    const ok = st.results.filter(r => r.grade !== '×'), perfect = st.results.filter(r => r.grade === '◎');
+    const cnt = {}; perfect.forEach(r => cnt[r.Q.angle] = (cnt[r.Q.angle] || 0) + 1);
+    const favAngle = +Object.keys(cnt).sort((a, c) => cnt[c] - cnt[a])[0] || 0;
+    return { perfect: perfect.length, favAngle, wobAvg: st.results.length ? st.wobT / st.results.length : 0, ok: ok.length };
+  }
+  // 称号：当てはまるものを、珍しい順に最大3つ
+  function earnTitles(n, b, micsDown, S, trio) {
+    const t = [];
+    if (n >= 25) t.push('謝罪の神');
+    if (micsDown >= 4) t.push('マイク全滅王'); else if (micsDown >= 2) t.push('マイク破壊王');
+    if (b >= 5) t.push('頭突き名人');
+    if (S.perfect >= 5) t.push('誠意の鬼');
+    if (trio && st.betrayLog.length >= 2) t.push('統率ゼロの役員会');
+    if (trio && n >= 10) t.push('一心同体の役員会');
+    if (st.evCleared >= 2) t.push('無茶ぶり対応のプロ');
+    if (S.wobAvg > 2.5 && n >= 3) t.push('こんにゃく社長');
+    if (st.water.spilled) t.push('水難の相');
+    if (n >= 15) t.push('謝罪のプロ');
+    else if (n >= 8) t.push('謝罪の中堅');
+    if (st.deepT > 8 && st.deepT > st.shallowT * 2) t.push('深すぎる人');
+    if (n === 0) t.push('反省ゼロ');
+    else if (n < 3) t.push('一瞬の誠意');
+    if (!t.length) t.push('ふつうの社長');
+    return t;
   }
 
   // ---------- input (finger) ----------
@@ -394,7 +468,11 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     }
     const wob = st.lv ? st.lv.wob : 1;
     stepBody(st, dt, st.tgt, phTarget, wob);
-    st.crew.forEach(b => stepBody(b, dt, st.tgt, phTarget, wob));   // 3人とも同じ指の動きに、それぞれの体でついてくる
+    st.crew.forEach(b => {   // 3人とも同じ指の動きに、それぞれの体でついてくる。裏切り中の役員は勝手に動く
+      const ov = b.ov && st.t < b.ov.until ? b.ov : null;
+      const tg = !ov ? st.tgt : ov.kind === 'stand' ? -4 : ov.kind === 'deep' ? 88 : Math.max(0, st.tgt) + 22 * Math.sin(st.t * 8);
+      stepBody(b, dt, tg, ov && ov.kind === 'stand' ? -12 : phTarget, wob);
+    });
     if (st.bumpAt && st.t >= st.bumpAt) { st.bumpAt = 0; bumpFront(); }
     if (st.nb) {   // 隣の役員が入ってきて、勝手に深く頭を下げ、ぶつかって帰っていく
       const nb = st.nb; nb.t += dt;
@@ -440,17 +518,19 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     if (st.ev && !st.ev.fired && st.qt >= st.ev.at) { st.ev.fired = true; fireEvent(st.ev.type); }
     // 3人のときは、いちばんずれている人で判定する
     const bodies = allBodies();
-    const faceOk = b => Q.faceUp ? b.ph < 5 : b.ph > 10;
-    const worst = bodies.reduce((w, b) => Math.abs(b.th - Q.angle) > Math.abs(w.th - Q.angle) ? b : w, st);
-    const off = worst.th - Q.angle, still = bodies.every(b => Math.abs(b.thv) < 60), down = bodies.every(faceOk);
-    const inBand = bodies.every(b => Math.abs(b.th - Q.angle) < TOL) && down && still;
+    const faceOk = b => Q.faceUp ? b.ph < 5 : Q.deepFace ? b.ph > 30 : b.ph > 10;
+    const worst = bodies.reduce((w, b) => Math.abs(b.th - tgtOf(b)) > Math.abs(w.th - tgtOf(w)) ? b : w, st);
+    const off = worst.th - tgtOf(worst), still = bodies.every(b => Math.abs(b.thv) < 60), down = bodies.every(faceOk);
+    const inBand = bodies.every(b => Math.abs(b.th - tgtOf(b)) < TOL) && down && still;
+    if (off > TOL) st.deepT += dt; else if (off < -TOL) st.shallowT += dt;
     if (inBand) st.prog += dt; else st.prog = Math.max(0, st.prog - dt * 0.3);
     if (!still) st.wobble += dt;
     const nm = worst !== st && worst.name ? worst.name + '、' : '';
     // the press reacts
     if (!inBand && Math.random() < dt * 2.2) { st.flashes.push({ x: (PORTRAIT ? 440 : 680) + Math.random() * 300, y: (PORTRAIT ? 560 : 500) + Math.random() * 150, t: 0 }); sfx.shutter(); }
     if (st.sayT > 2.2) {
-      if (Q.faceUp && !down) reporter(pick(['「顔を上げてと言ってるでしょう！」', '「顔！ 顔を上げて！」', '「下を向かない！」']));
+      if (Q.deepFace && !down) reporter(pick(['「まだ笑ってますよね？」', '「もっと顔を伏せて！」', '「口元が見えてますよ」']));
+      else if (Q.faceUp && !down) reporter(pick(['「顔を上げてと言ってるでしょう！」', '「顔！ 顔を上げて！」', '「下を向かない！」']));
       else if (nm && Math.abs(off) > TOL) reporter(off < 0 ? pick(['「' + nm + '浅い！」', '「' + nm + 'もっと下げて！」', '「' + nm + 'やる気あります？」']) : pick(['「' + nm + '深すぎ！」', '「' + nm + '一人だけ深い！」', '「' + nm + '張り切りすぎ！」']));
       else if (Math.random() < 0.22) reporter(pick(st.scandal.lines));
       else if (Math.abs(st.thv) > 90) reporter(pick(['「グラグラしてますよ！」', '「ふざけてるんですか？」', '「落ち着いて！」', '「骨、ありますか？」', '「揺れで反省を表現してるんですか？」', '「酔ってます？」', '「こんにゃくみたいですよ」']));
@@ -657,6 +737,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     ctx.beginPath(); ctx.arc(0, 0, r, -Math.PI / 2, 0); ctx.stroke();
     ctx.strokeStyle = 'rgba(79,191,122,.75)'; ctx.lineWidth = 12;
     ctx.beginPath(); ctx.arc(0, 0, r, -Math.PI / 2 + (Q.angle - TOL) * D2R, -Math.PI / 2 + (Q.angle + TOL) * D2R); ctx.stroke();
+    if (Q.chiefExtra) { const c = tgtOf(st); ctx.strokeStyle = 'rgba(255,233,163,.85)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, r - 12, -Math.PI / 2 + (c - TOL) * D2R, -Math.PI / 2 + (c + TOL) * D2R); ctx.stroke(); }
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
     const a = -Math.PI / 2 + st.th * D2R; ctx.beginPath(); ctx.moveTo(Math.cos(a) * (r - 18), Math.sin(a) * (r - 18)); ctx.lineTo(Math.cos(a) * (r + 18), Math.sin(a) * (r + 18)); ctx.stroke();
     st.crew.forEach((b, i) => {
@@ -667,7 +748,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     ctx.font = '700 22px ' + UI; ctx.fillStyle = '#ffffff'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     const qx = PORTRAIT ? VIEW.x + 20 : 60, qy = PORTRAIT ? VIEW.y + 120 : 60;
     ctx.font = (PORTRAIT ? '900 34px ' : '700 22px ') + UI;
-    ctx.fillText(Q.name + '　' + Q.angle + '°' + (Q.faceUp ? '　顔を上げて' : ''), qx, qy);
+    ctx.fillText(Q.name + '　' + Q.angle + '°' + (Q.faceUp ? '　顔を上げて' : Q.deepFace ? '　顔を深く' : Q.chiefExtra ? '　社長は' + tgtOf(st) + '°' : ''), qx, qy);
     ctx.font = '16px ' + PX; ctx.fillStyle = '#ffe9a3'; ctx.font = (PORTRAIT ? '22px ' : '16px ') + PX; if (st.mode === 'trio') {
       ctx.font = '20px ' + PX; let x = qx;
       allBodies().forEach(b => { const t = (b.name || '社長') + ' ' + Math.round(b.th) + '°  '; ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(31,29,36,.85)'; ctx.strokeText(t, x, qy + 38); ctx.fillStyle = b.col || '#ffffff'; ctx.fillText(t, x, qy + 38); x += ctx.measureText(t).width; });
@@ -722,7 +803,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
 
   let last = performance.now();
   function loop(now) { const dt = Math.min(0.025, (now - last) / 1000); last = now; update(dt); draw(); requestAnimationFrame(loop); }
-  if (/[?&]debug/.test(location.search)) window.__owabi = { st, fireEvent };
+  if (/[?&]debug/.test(location.search)) window.__owabi = { st, fireEvent, showResult };
   hud();
   requestAnimationFrame(loop);
 })();
