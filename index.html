@@ -795,7 +795,7 @@ kbd { font-family: var(--ui); font-size: 12px; border: 1px solid var(--ink); pad
     ctx.fillText('本日の謝罪会見', x0 + w / 2, y0 + 23);
     ctx.fillStyle = '#1f1d24'; ctx.font = '800 32px "Shippori Mincho", serif';
     const lines = []; let cur = '';
-    for (const ch of st.scandal.what + 'について') { if (ctx.measureText(cur + ch).width > w - 40) { lines.push(cur); cur = ch; } else cur += ch; }
+    for (const ch of st.scandal.what + 'について') { if (ctx.measureText(cur + ch).width > w - 40 && !'」』）、。'.includes(ch)) { lines.push(cur); cur = ch; } else cur += ch; }   // 」や。は行頭に置かない
     lines.push(cur);
     lines.forEach((l, i) => ctx.fillText(l, x0 + w / 2, y0 + 110 - (lines.length - 1) * 22 + i * 44));
     ctx.globalAlpha = 1;
